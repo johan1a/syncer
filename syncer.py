@@ -1,5 +1,5 @@
 from flask import Flask, jsonify
-import time, atexit
+import time, atexit, requests, os, subprocess
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
@@ -7,25 +7,61 @@ app = Flask(__name__)
 #app.config.from_object('syncer.config')
 app.config.from_pyfile('syncer.config')
 
+SYNCER_PORT = "5000"
+
 def check_health():
     return { "status": True }
 
-@app.route('/health')
+@app.route('/health/')
 def health():
     d = check_health()
     return jsonify(d)
 
+def get_local_dirs():
+    return app.config['SYNC_DIRS']
+
 # List dirs to sync
 def list_dirs():
-    dirs = ["~/sync/"]
-    return { "dirs": dirs }
+    return { "dirs": get_local_dirs() }
 
 def list_nodes():
     return app.config['NODES']
 
-@app.route('/dirs')
+@app.route('/dirs/')
 def dirs():
     return jsonify(list_dirs())
+
+def get_remote_dirs(node):
+    url = "http://{}:{}/dirs/".format(node, SYNCER_PORT)
+    res = requests.get(url)
+    if res.status_code == 200:
+      return res.json
+    else:
+      print("Could not list dirs of node {}".format(node))
+      return []
+
+def ping_node(node):
+    url = "http://{}:{}/health/".format(node, SYNCER_PORT)
+    res = requests.get(url)
+    if res.status_code == 200:
+      return True
+    else:
+      print("Could not contact node {}.".format(node))
+      return False
+
+def sync_directory(directory):
+    print("Syncing directory '{}'".format(directory))
+    for file in os.listdir(directory):
+      print("local file: {}".format(file))
+
+def sync_node(node):
+    print("Checking for node connectivity to: " + node)
+    if ping_node(node):
+      print("Starting sync of node: " + node)
+      remote_dirs = get_remote_dirs(node)
+      local_dirs = get_local_dirs()
+      for dir in local_dirs:
+        sync_directory(dir)
 
 def sync_nodes():
     print("")
@@ -34,7 +70,7 @@ def sync_nodes():
 
     nodes = list_nodes()
     for node in nodes:
-        print("Starting sync of node: " + node)
+        sync_node(node)
 
 def start_job():
     scheduler = BackgroundScheduler()
