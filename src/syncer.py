@@ -13,25 +13,20 @@ SYNCER_PORT = "5000"
 def check_health():
   return { "status": True }
 
-@app.route('/health/')
-def health():
-  d = check_health()
-  return jsonify(d)
-
-def get_sync_dir():
-  return "/sync/"
+def get_sync_base_dir():
+  return get_file_metadata("/sync/")
 
 def list_nodes():
   return app.config['NODES']
 
-def get_remote_dirs(node):
-  url = "http://{}:{}/sync_dirs/".format(node, SYNCER_PORT)
+def get_remote_file_metadata(node, path):
+  url = "http://{}:{}/files{}".format(node, SYNCER_PORT, path)
   res = requests.get(url)
   if res.status_code == 200:
     return res.json
   else:
-    logging.warning("Could not list dirs of node {}".format(node))
-    return []
+    logging.warning("Unable to retrive metadata for {} from node {}".format(path, node))
+    return {}
 
 def ping_node(node):
   url = "http://{}:{}/health/".format(node, SYNCER_PORT)
@@ -41,9 +36,6 @@ def ping_node(node):
   else:
     logging.warning("Could not contact node {}.".format(node))
     return False
-
-def get_remote_file_metadata(path):
-  logging.warning("get_remote_file_metadata")
 
 def get_file_type(path):
   if os.path.isdir(path):
@@ -55,38 +47,37 @@ def get_file_metadata(path):
   stat = os.stat(path)
   # seconds since epoch
   last_changed = stat.st_mtime
-  logging.info(stat)
-  return {
+  file_type = get_file_type(path)
+  metadata = {
       "last_changed": last_changed,
       "path": path,
-      "type": get_file_type(path)
+      "type": file_type
       }
-
-def get_directory_metadata(directory):
-  metadata = {
-      "path": directory,
-      "type": "directory",
-      "files": []
-      }
-  for file in os.listdir(directory):
-    path = directory + file
-    metadata["files"].append(get_file_metadata(path))
+  if file_type == "directory":
+    metadata["files"] = []
+    for file in os.listdir(path):
+      metadata["files"].append(get_file_metadata(path + file))
   return metadata
 
-def sync_file(file):
+def is_directory(file):
+  return file["type"] == "directory"
+
+def sync_data(node, file):
   path = file["path"]
-  logging.warning("local file: {}".format(path))
-  #remote_file_info = get_remote_file_metadata(path)
+  remote_file_info = get_remote_file_metadata(node, path)
 
-def sync_directory(directory):
-  logging.warning("Syncing directory '{}'".format(directory))
-  dir_metadata = get_directory_metadata(directory)
-  logging.warning("metadata")
-  logging.warning(dir_metadata)
+def sync_file(node, file):
+  path = file["path"]
+  logging.warning("Syncing file '{}'".format(path))
+  metadata = get_file_metadata(path)
+  logging.warning(metadata)
 
-  if dir_metadata and dir_metadata["files"]:
-    for file in dir_metadata["files"]:
-      sync_file(file)
+  if metadata:
+    if is_directory(metadata):
+      for subfile in metadata["files"]:
+        sync_file(node, subfile)
+    else:
+        sync_data(node, file)
   else:
     logging.warning("No metadata found")
 
@@ -94,8 +85,7 @@ def sync_node(node):
   logging.warning("Checking for node connectivity to: " + node)
   if ping_node(node):
     logging.warning("Starting sync of node: " + node)
-    local_dir = get_sync_dir()
-    sync_directory(local_dir)
+    sync_file(node, get_sync_base_dir())
 
 def sync_nodes():
   logging.warning("")
@@ -117,6 +107,16 @@ def start_job():
         replace_existing=True)
     atexit.register(lambda: scheduler.shutdown())
     logging.warning("added job to scheduler")
+
+
+@app.route('/health/')
+def health():
+  d = check_health()
+  return jsonify(d)
+
+@app.route('/files/<path>/')
+def files(path):
+  return jsonify(get_file_metadata("/" + path))
 
 if __name__ == "__main__":
     root_logger = logging.getLogger()
