@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, abort, Response
 import time, atexit, requests, os, subprocess, logging
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -20,13 +20,9 @@ def list_nodes():
   return app.config['NODES']
 
 def get_remote_file_metadata(node, path):
-  url = "http://{}:{}/files{}".format(node, SYNCER_PORT, path)
+  url = "http://{}:{}/metadata{}".format(node, SYNCER_PORT, path)
   res = requests.get(url)
-  if res.status_code == 200:
-    return res.json
-  else:
-    logging.warning("Unable to retrive metadata for {} from node {}".format(path, node))
-    return {}
+  return res
 
 def ping_node(node):
   url = "http://{}:{}/health/".format(node, SYNCER_PORT)
@@ -37,13 +33,46 @@ def ping_node(node):
     logging.warning("Could not contact node {}.".format(node))
     return False
 
+def send_file(node, file):
+  path = file["path"]
+  print("Sending file {} to node {}".format(path, node))
+  url = "http://{}:{}/files{}".format(node, SYNCER_PORT, path)
+  with open(path) as f:
+    data = f.read()
+    res = requests.post(url, data = data)
+    if res.status_code == 200:
+      return True
+    else:
+      logging.warning("Could not send file {} to node {}.".format(path, node))
+  return False
+
+def retrieve_file(node, file):
+  path = file["path"]
+  print("Retrieving file {} from node {}".format(path, node))
+  url = "http://{}:{}/files{}".format(node, SYNCER_PORT, path)
+  res = requests.get(url)
+  if res.status_code == 200:
+    with open(path) as f:
+      f.write(res.content)
+  else:
+    logging.warning("Could not retrieve file {} to node {}. Got status {}".format(path, node, res.status_code))
+
 def get_file_type(path):
   if os.path.isdir(path):
     return "directory"
   else:
     return "file"
 
+def save_file(path, data):
+  with open(path) as file:
+    file.write(data)
+    return True
+  return False
+
 def get_file_metadata(path):
+  if not os.path.exists(path):
+    return None
+
   stat = os.stat(path)
   # seconds since epoch
   last_changed = stat.st_mtime
@@ -62,9 +91,21 @@ def get_file_metadata(path):
 def is_directory(file):
   return file["type"] == "directory"
 
+def is_newer(local, remote):
+  return local["last_changed"] < remote["last_changed"]
+
 def sync_data(node, file):
   path = file["path"]
-  remote_file_info = get_remote_file_metadata(node, path)
+  response = get_remote_file_metadata(node, path)
+  if response.status_code == 200:
+    remote_file = response.json
+    if is_newer(file, remote_file):
+      send_file(node, file)
+    else:
+      retrieve_file(node, file)
+  elif response.status_code == 404:
+    logging.warning("File {} could not be found on node {}".format(path, node))
+    send_file(node, file)
 
 def sync_file(node, file):
   path = file["path"]
@@ -114,9 +155,31 @@ def health():
   d = check_health()
   return jsonify(d)
 
-@app.route('/files/<path>/')
+@app.route('/files/<path>/', methods = ["GET", "POST"])
 def files(path):
-  return jsonify(get_file_metadata("/" + path))
+  if request.method == "GET":
+    with open(path) as file:
+      data = file.read()
+      response = {
+        "path": path,
+        "data": data
+        }
+      return response
+  elif request.method == 'POST':
+    data = request.form
+    if save_file(path, data):
+      return Response(status=200)
+    else:
+      abort(500)
+
+@app.route('/metadata/<path>/', methods = ["GET", "POST"])
+def metadata(path):
+  if request.method == 'GET':
+    metadata = get_file_metadata("/" + path)
+    if metadata:
+      return jsonify(metadata)
+    else:
+      abort(404)
 
 if __name__ == "__main__":
     root_logger = logging.getLogger()
