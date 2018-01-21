@@ -72,7 +72,7 @@ def get_file_type(path):
     return "file"
 
 def save_file(path, data):
-  with open(path) as file:
+  with open(path, "w+") as file:
     file.write(data)
     return True
   return False
