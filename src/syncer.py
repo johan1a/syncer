@@ -9,7 +9,7 @@ app.config.from_pyfile('syncer.config')
 
 
 SYNCER_PORT = "5000"
-BASE_SYNC_DIR = "/sync/"
+BASE_SYNC_DIR = "/sync"
 
 def check_health():
   return { "status": True }
@@ -39,7 +39,10 @@ def send_file(node, file):
   path = file["path"]
   print("Sending file {} to node {}".format(path, node))
   url = "http://{}:{}/files/".format(node, SYNCER_PORT)
-  params = { "path": path }
+  params = {
+             "path": path,
+             "type": "file"
+           }
   with open(path, 'rb') as f:
     data = f.read()
     res = requests.post(url,
@@ -50,6 +53,23 @@ def send_file(node, file):
       return True
     else:
       logging.warning("Could not send file {} to node {}.".format(path, node))
+  return False
+
+def create_remote_directory(node, file):
+  path = file["path"]
+  print("Creating directory {} on node {}".format(path, node))
+  url = "http://{}:{}/files/".format(node, SYNCER_PORT)
+  params = {
+             "path": path,
+             "type": "directory"
+           }
+  res = requests.post(url,
+                      params = params,
+                      headers={'Content-Type': 'application/octet-stream'})
+  if res.status_code == 200:
+    return True
+  else:
+    logging.warning("Could not send file {} to node {}.".format(path, node))
   return False
 
 def retrieve_file(node, file):
@@ -93,7 +113,7 @@ def get_file_metadata(path):
   if file_type == "directory":
     metadata["files"] = []
     for file in os.listdir(path):
-      metadata["files"].append(get_file_metadata(path + file))
+      metadata["files"].append(get_file_metadata(path + "/" + file))
   return metadata
 
 def is_directory(file):
@@ -113,7 +133,10 @@ def sync_data(node, file):
       retrieve_file(node, file)
   elif response.status_code == 404:
     logging.warning("File {} could not be found on node {}".format(path, node))
-    send_file(node, file)
+    if is_directory(file):
+      create_remote_directory(node, file)
+    else:
+      send_file(node, file)
 
 def sync_file(node, file):
   path = file["path"]
@@ -122,11 +145,10 @@ def sync_file(node, file):
   logging.debug(metadata)
 
   if metadata:
+    sync_data(node, file)
     if is_directory(metadata):
       for subfile in metadata["files"]:
         sync_file(node, subfile)
-    else:
-        sync_data(node, file)
   else:
     logging.warning("No metadata found")
 
@@ -134,7 +156,9 @@ def sync_node(node):
   logging.warning("Checking for node connectivity to: " + node)
   if ping_node(node):
     logging.warning("Starting sync of node: " + node)
-    sync_file(node, get_sync_base_dir())
+    base_dir = get_sync_base_dir()
+    for file in base_dir["files"]:
+      sync_file(node, get_file_metadata(file["path"]))
 
 def sync_nodes():
   logging.warning("")
@@ -150,7 +174,7 @@ def start_job():
     scheduler.start()
     scheduler.add_job(
         func=sync_nodes,
-        trigger=IntervalTrigger(seconds=5),
+        trigger=IntervalTrigger(seconds=10),
         id='sync_job',
         name='File sync job',
         replace_existing=True)
@@ -172,8 +196,12 @@ def files():
     return send_from_directory(BASE_SYNC_DIR, path, as_attachment=True)
   elif request.method == 'POST':
     logging.warning("Saving file: " + path)
-    data = request.data
+    if request.args.get("type") == "directory":
+      if not os.path.exists(path):
+        os.makedirs(path)
+      return Response(status=200)
 
+    data = request.data
     if data:
       if save_file(path, data):
         return Response(status=200)
