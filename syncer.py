@@ -27,12 +27,16 @@ def list_dirs():
 def list_nodes():
     return app.config['NODES']
 
-@app.route('/dirs/')
+@app.route('/sync_dirs/')
 def dirs():
     return jsonify(list_dirs())
 
+@app.route('/dirs/')
+def list_dirs():
+    return ""
+
 def get_remote_dirs(node):
-    url = "http://{}:{}/dirs/".format(node, SYNCER_PORT)
+    url = "http://{}:{}/sync_dirs/".format(node, SYNCER_PORT)
     res = requests.get(url)
     if res.status_code == 200:
       return res.json
@@ -49,10 +53,26 @@ def ping_node(node):
       print("Could not contact node {}.".format(node))
       return False
 
+def get_remote_file_metadata(path):
+    print("get_remote_file_metadata")
+
+def get_file_metadata(path):
+      stat = os.stat(path)
+      # seconds since epoch
+      last_changed = stat.st_mtime
+      return {
+               "last_changed": last_changed,
+               "path": path
+             }
+
 def sync_directory(directory):
     print("Syncing directory '{}'".format(directory))
     for file in os.listdir(directory):
       print("local file: {}".format(file))
+      path = directory + file
+      metadata = get_file_metadata(path)
+      print("Metadata: {}".format(metadata))
+      remote_file_info = get_remote_file_metadata(path)
 
 def sync_node(node):
     print("Checking for node connectivity to: " + node)

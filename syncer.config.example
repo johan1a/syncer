@@ -1,0 +1,3 @@
+NODES = ["yourserver"]
+SYNC_DIRS = ["/home/youruser/sync/"]
+
