@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, abort, Response
+from flask import Flask, jsonify, abort, Response, request, send_from_directory
 import time, atexit, requests, os, subprocess, logging
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -9,19 +9,21 @@ app.config.from_pyfile('syncer.config')
 
 
 SYNCER_PORT = "5000"
+BASE_SYNC_DIR = "/sync/"
 
 def check_health():
   return { "status": True }
 
 def get_sync_base_dir():
-  return get_file_metadata("/sync/")
+  return get_file_metadata(BASE_SYNC_DIR)
 
 def list_nodes():
   return app.config['NODES']
 
 def get_remote_file_metadata(node, path):
-  url = "http://{}:{}/metadata{}/".format(node, SYNCER_PORT, path)
-  res = requests.get(url)
+  url = "http://{}:{}/metadata/".format(node, SYNCER_PORT)
+  params = { "path": path }
+  res = requests.get(url, params = params)
   return res
 
 def ping_node(node):
@@ -36,10 +38,14 @@ def ping_node(node):
 def send_file(node, file):
   path = file["path"]
   print("Sending file {} to node {}".format(path, node))
-  url = "http://{}:{}/files{}/".format(node, SYNCER_PORT, path)
-  with open(path) as f:
+  url = "http://{}:{}/files/".format(node, SYNCER_PORT)
+  params = { "path": path }
+  with open(path, 'rb') as f:
     data = f.read()
-    res = requests.post(url, data = data)
+    res = requests.post(url,
+                        data = data,
+                        params = params,
+                        headers={'Content-Type': 'application/octet-stream'})
     if res.status_code == 200:
       return True
     else:
@@ -49,8 +55,10 @@ def send_file(node, file):
 def retrieve_file(node, file):
   path = file["path"]
   print("Retrieving file {} from node {}".format(path, node))
-  url = "http://{}:{}/files{}/".format(node, SYNCER_PORT, path)
-  res = requests.get(url)
+  url = "http://{}:{}/files/".format(node, SYNCER_PORT)
+  path = file["path"]
+  params = { "path": path }
+  res = requests.get(url, params = params)
   if res.status_code == 200:
     with open(path) as f:
       f.write(res.content)
@@ -155,16 +163,12 @@ def health():
   d = check_health()
   return jsonify(d)
 
-@app.route('/files/<path>', methods = ["GET", "POST"])
-def files(path):
+@app.route('/files/', methods = ["GET", "POST"])
+def files():
   if request.method == "GET":
-    with open(path) as file:
-      data = file.read()
-      response = {
-        "path": path,
-        "data": data
-        }
-      return response
+    logging.warning("Sending file: " + path)
+    path = request.args.get("path").replace(BASE_SYNC_DIR, "")
+    return send_from_directory(BASE_SYNC_DIR, path, as_attachment=True)
   elif request.method == 'POST':
     data = request.form
     if save_file(path, data):
@@ -172,14 +176,14 @@ def files(path):
     else:
       abort(500)
 
-@app.route('/metadata/<path>', methods = ["GET", "POST"])
-def metadata(path):
-  if request.method == 'GET':
-    metadata = get_file_metadata("/" + path)
-    if metadata:
-      return jsonify(metadata)
-    else:
-      abort(404)
+@app.route('/metadata/<path>/')
+def metadata():
+  path = request.args.get("path")
+  metadata = get_file_metadata("/" + path)
+  if metadata:
+    return jsonify(metadata)
+  else:
+    abort(404)
 
 if __name__ == "__main__":
     root_logger = logging.getLogger()
