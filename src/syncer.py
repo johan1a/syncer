@@ -20,7 +20,7 @@ def list_nodes():
   return app.config['NODES']
 
 def get_remote_file_metadata(node, path):
-  url = "http://{}:{}/metadata{}".format(node, SYNCER_PORT, path)
+  url = "http://{}:{}/metadata{}/".format(node, SYNCER_PORT, path)
   res = requests.get(url)
   return res
 
@@ -36,7 +36,7 @@ def ping_node(node):
 def send_file(node, file):
   path = file["path"]
   print("Sending file {} to node {}".format(path, node))
-  url = "http://{}:{}/files{}".format(node, SYNCER_PORT, path)
+  url = "http://{}:{}/files{}/".format(node, SYNCER_PORT, path)
   with open(path) as f:
     data = f.read()
     res = requests.post(url, data = data)
@@ -49,7 +49,7 @@ def send_file(node, file):
 def retrieve_file(node, file):
   path = file["path"]
   print("Retrieving file {} from node {}".format(path, node))
-  url = "http://{}:{}/files{}".format(node, SYNCER_PORT, path)
+  url = "http://{}:{}/files{}/".format(node, SYNCER_PORT, path)
   res = requests.get(url)
   if res.status_code == 200:
     with open(path) as f:
@@ -155,7 +155,7 @@ def health():
   d = check_health()
   return jsonify(d)
 
-@app.route('/files/<path>/', methods = ["GET", "POST"])
+@app.route('/files/<path>', methods = ["GET", "POST"])
 def files(path):
   if request.method == "GET":
     with open(path) as file:
@@ -172,7 +172,7 @@ def files(path):
     else:
       abort(500)
 
-@app.route('/metadata/<path>/', methods = ["GET", "POST"])
+@app.route('/metadata/<path>', methods = ["GET", "POST"])
 def metadata(path):
   if request.method == 'GET':
     metadata = get_file_metadata("/" + path)
