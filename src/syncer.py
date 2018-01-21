@@ -80,7 +80,7 @@ def retrieve_file(node, file):
   params = { "path": path }
   res = requests.get(url, params = params)
   if res.status_code == 200:
-    with open(path) as f:
+    with open(path, 'wb') as f:
       f.write(res.content)
   else:
     logging.warning("Could not retrieve file {} to node {}. Got status {}".format(path, node, res.status_code))
@@ -198,8 +198,8 @@ def health():
 def files():
   path = request.args.get("path")
   if request.method == "GET":
-    path = path.replace(BASE_SYNC_DIR, "")
     logging.warning("Sending file: " + path)
+    path = path.replace(BASE_SYNC_DIR + "/", "")
     return send_from_directory(BASE_SYNC_DIR, path, as_attachment=True)
   elif request.method == 'POST':
     logging.warning("Saving file: " + path)
