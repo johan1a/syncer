@@ -37,7 +37,7 @@ def ping_node(node):
 
 def send_file(node, file):
   path = file["path"]
-  print("Sending file {} to node {}".format(path, node))
+  logging.warning("Sending file {} to node {}".format(path, node))
   url = "http://{}:{}/files/".format(node, SYNCER_PORT)
   params = {
              "path": path,
@@ -57,7 +57,7 @@ def send_file(node, file):
 
 def create_remote_directory(node, file):
   path = file["path"]
-  print("Creating directory {} on node {}".format(path, node))
+  logging.warning("Creating directory {} on node {}".format(path, node))
   url = "http://{}:{}/files/".format(node, SYNCER_PORT)
   params = {
              "path": path,
@@ -74,7 +74,7 @@ def create_remote_directory(node, file):
 
 def retrieve_file(node, file):
   path = file["path"]
-  print("Retrieving file {} from node {}".format(path, node))
+  logging.warning("Retrieving file {} from node {}".format(path, node))
   url = "http://{}:{}/files/".format(node, SYNCER_PORT)
   path = file["path"]
   params = { "path": path }
@@ -122,14 +122,21 @@ def is_directory(file):
 def is_newer(local, remote):
   return local["last_changed"] < remote["last_changed"]
 
+def same_file(local, remote):
+  return local["last_changed"] == remote["last_changed"]
+
 def sync_data(node, file):
   path = file["path"]
   response = get_remote_file_metadata(node, path)
-  if response.status_code == 200:
-    remote_file = response.json
-    if is_newer(file, remote_file):
+  if not is_directory(file) and response.status_code == 200:
+    remote_file = response.json()
+    if same_file(file, remote_file):
+      logging.warning("{} is in sync between us and {}.".format(path, node))
+    elif is_newer(file, remote_file):
+      logging.warning("There is an older version of {} on {}.".format(path, node))
       send_file(node, file)
     else:
+      logging.warning("There is a newer version of {} on {}.".format(path, node))
       retrieve_file(node, file)
   elif response.status_code == 404:
     logging.warning("File {} could not be found on node {}".format(path, node))
@@ -209,10 +216,10 @@ def files():
       abort(400)
     abort(500)
 
-@app.route('/metadata/<path>/')
+@app.route('/metadata/')
 def metadata():
   path = request.args.get("path")
-  metadata = get_file_metadata("/" + path)
+  metadata = get_file_metadata(path)
   if metadata:
     return jsonify(metadata)
   else:
@@ -222,7 +229,6 @@ if __name__ == "__main__":
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
     logging.warning(root_logger)
-    logging.warning("in main")
     start_job()
     app.run(debug=True, host='0.0.0.0')
 
