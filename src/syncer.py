@@ -72,7 +72,7 @@ def get_file_type(path):
     return "file"
 
 def save_file(path, data):
-  with open(path, "w+") as file:
+  with open(path, "wb") as file:
     file.write(data)
     return True
   return False
@@ -119,7 +119,7 @@ def sync_file(node, file):
   path = file["path"]
   logging.warning("Syncing file '{}'".format(path))
   metadata = get_file_metadata(path)
-  logging.warning(metadata)
+  logging.debug(metadata)
 
   if metadata:
     if is_directory(metadata):
@@ -172,11 +172,14 @@ def files():
     return send_from_directory(BASE_SYNC_DIR, path, as_attachment=True)
   elif request.method == 'POST':
     logging.warning("Saving file: " + path)
-    data = request.form
-    if save_file(path, data):
-      return Response(status=200)
+    data = request.data
+
+    if data:
+      if save_file(path, data):
+        return Response(status=200)
     else:
-      abort(500)
+      abort(400)
+    abort(500)
 
 @app.route('/metadata/<path>/')
 def metadata():
