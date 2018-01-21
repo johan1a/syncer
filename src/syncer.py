@@ -165,11 +165,13 @@ def health():
 
 @app.route('/files/', methods = ["GET", "POST"])
 def files():
+  path = request.args.get("path")
   if request.method == "GET":
-    path = request.args.get("path").replace(BASE_SYNC_DIR, "")
+    path = path.replace(BASE_SYNC_DIR, "")
     logging.warning("Sending file: " + path)
     return send_from_directory(BASE_SYNC_DIR, path, as_attachment=True)
   elif request.method == 'POST':
+    logging.warning("Saving file: " + path)
     data = request.form
     if save_file(path, data):
       return Response(status=200)
