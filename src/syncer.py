@@ -4,7 +4,6 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 app = Flask(__name__)
-#app.config.from_object('syncer.config')
 app.config.from_pyfile('syncer.config')
 
 SYNCER_PORT = "5000"
@@ -104,4 +103,7 @@ def start_job():
 
     atexit.register(lambda: scheduler.shutdown())
 
-start_job()
+if __name__ == '__main__':
+    start_job()
+    app.run(debug=True, host='0.0.0.0')
+
