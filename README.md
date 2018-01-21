@@ -1,8 +1,14 @@
 
 
 
+How to build
+
+```
+./docker_build
+```
+
 How to run
 
 ```
-python src/syncer.py
+./docker_run
 ```
