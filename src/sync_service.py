@@ -60,7 +60,7 @@ def sync_data(node, file):
       remote_api.send_file(node, file)
     else:
       logging.warning("There is a newer version of {} on {}.".format(path, node))
-      retrieve_file(node, file)
+      remote_api.retrieve_file(node, file)
   elif response.status_code == 404:
     logging.warning("File {} could not be found on node {}".format(path, node))
     if is_directory(file):
