@@ -1,0 +1,10 @@
+#sudo: required
+language: python
+services:
+    - docker
+install: pip install -r requirements-test.txt
+script: python -m pytest --cov=website/ tests/
+after_success:
+    - docker build -t johan1a/syncer:$TRAVIS_TAG .
+    - docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
+    - docker push johan1a/syncer:$TRAVIS_TAG

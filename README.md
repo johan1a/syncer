@@ -1,14 +1,8 @@
 
 
 
-How to build
+How to run:
 
 ```
-./docker_build
-```
-
-How to run
-
-```
-./docker_run
+docker-compose up
 ```
