@@ -17,8 +17,8 @@ def files():
   path = request.args.get("path")
   if request.method == "GET":
     logging.warning("Sending file: " + path)
-    path = path.replace(BASE_SYNC_DIR + "/", "")
-    return send_from_directory(BASE_SYNC_DIR, path, as_attachment=True)
+    path = path.replace(sync_service.BASE_SYNC_DIR + "/", "")
+    return send_from_directory(sync_service.BASE_SYNC_DIR, path, as_attachment=True)
   elif request.method == 'POST':
     logging.warning("Saving file: " + path)
     if request.args.get("type") == "directory":
