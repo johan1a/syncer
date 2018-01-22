@@ -7,3 +7,5 @@ services:
     network_mode: "host"
     volumes:
       - "~/sync:/sync"
+    environment:
+      - SYNCER_HOSTS

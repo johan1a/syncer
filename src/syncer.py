@@ -46,7 +46,7 @@ if __name__ == "__main__":
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
 
-    nodes = app.config['NODES']
+    nodes = os.getenv('SYNCER_HOSTS').split(",")
     sync_service.start_job(nodes)
 
     app.run(debug=True, host='0.0.0.0')
