@@ -2,7 +2,7 @@
 language: python
 services:
     - docker
-install: pip install -r requirements-test.txt
+install: pip install -r requirements_test.txt
 script: python -m pytest --cov=website/ tests/
 after_success:
     - docker build -t johan1a/syncer:$TRAVIS_TAG .
