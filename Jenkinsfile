@@ -17,6 +17,6 @@ node {
   }
 
   stage('Deploy to staging') {
-    sh deploy.sh
+    sh './deploy.sh'
   }
 }
