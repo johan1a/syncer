@@ -15,4 +15,8 @@ node {
         image.push('latest')
      }
   }
+
+  stage('Deploy to staging') {
+    sh 'ansible-playbook ansible/deploy.yml -i staging.ini'
+  }
 }

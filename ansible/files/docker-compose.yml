@@ -1,0 +1,11 @@
+version: '3'
+services:
+  web:
+    image: johan1a/syncer
+    ports:
+      - "5000:5000"
+    network_mode: "host"
+    volumes:
+      - "~/sync:/sync"
+    environment:
+      - SYNCER_HOSTS
