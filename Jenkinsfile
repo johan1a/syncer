@@ -17,6 +17,6 @@ node {
   /* } */
 
   stage('Deploy to staging') {
-    sh 'docker run --rm --net host -v ~/.ssh:/ansible/.host_ssh -v $(pwd)/ansible:/ansible/playbooks philm/ansible_playbook  $(pwd)/ansible/deploy.yml -i $(pwd)/ansible/staging.ini'
+    sh 'docker run --rm --net host -v ~/.ssh:/ansible/.host_ssh -v $(pwd)/ansible:/ansible/playbooks philm/ansible_playbook  ansible/deploy.yml -i ansible/staging.ini'
   }
 }
