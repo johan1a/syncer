@@ -17,6 +17,6 @@ node {
   }
 
   stage('Deploy to staging') {
-    sh 'ansible-playbook ansible/deploy.yml -i staging.ini'
+    sh deploy.sh
   }
 }
