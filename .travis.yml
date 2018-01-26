@@ -4,7 +4,7 @@ services:
 install: pip install -r requirements_test.txt
 script: python -m pytest tests/
 after_success:
-    - docker build -t johan1a/syncer:$TRAVIS_COMMIT .
+    - docker build -t johan1a/syncer -t johan1a/syncer:$TRAVIS_COMMIT .
     - docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
     - docker push johan1a/syncer
     - docker push johan1a/syncer:$TRAVIS_COMMIT
