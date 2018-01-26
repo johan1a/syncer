@@ -18,6 +18,7 @@ node {
 
   stage('Deploy to staging') {
     sh 'cat deploy/deploy.sh'
+    sh 'chmod +x ./deploy/deploy.sh'
     sh './deploy/deploy.sh'
   }
 }
