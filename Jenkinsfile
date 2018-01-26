@@ -18,6 +18,6 @@ node {
 
   stage('Deploy to staging') {
     sh 'cat deploy/deploy.sh'
-    sh 'deploy/deploy.sh'
+    sh './deploy/deploy.sh'
   }
 }
