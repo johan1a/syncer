@@ -1,4 +1,8 @@
 node {
+
+  environment {
+    SYNCER_HOSTS = 'archlinux'
+  }
   stage('Clone repository') {
     checkout scm
   }
