@@ -17,6 +17,7 @@ node {
   /* } */
 
   stage('Deploy to staging') {
-    bash 'deploy/deploy.sh'
+    sh 'cat deploy/deploy.sh'
+    sh 'deploy/deploy.sh'
   }
 }
