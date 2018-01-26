@@ -23,7 +23,6 @@ node {
   stage('Deploy to staging') {
     sh 'cat deploy/deploy.sh'
     sh 'chmod +x ./deploy/deploy.sh'
-    sh 'cd deploy'
-    sh 'SYNCER_HOSTS=archlinux ./deploy.sh'
+    sh 'cd deploy && SYNCER_HOSTS=archlinux ./deploy.sh'
   }
 }
