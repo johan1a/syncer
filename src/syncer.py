@@ -3,7 +3,6 @@ import requests, os, logging
 import sync_service
 
 app = Flask(__name__)
-app.config.from_pyfile('syncer.config')
 
 def check_health():
   return { "status": True }

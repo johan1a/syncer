@@ -1,5 +1,0 @@
-
-  - hosts: syncer-node
-    gather_facts: no
-    roles:
-      - syncer

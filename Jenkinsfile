@@ -17,10 +17,6 @@ node {
   /* } */
 
   stage('Deploy to staging') {
-    sh 'ls -lah'
-    sh 'ls -lah /var/jenkins_home/workspace/Syncer@2/ansible'
-    sh 'ls -lah /var/jenkins_home/workspace/Syncer@2'
-    sh 'pwd'
-    sh 'docker run --rm --net host -v ~/.ssh:/ansible/.host_ssh -v $(pwd)/ansible:/ansible/playbooks philm/ansible_playbook deploy.yml -i staging.ini'
+    sh 'deploy/deploy.sh'
   }
 }
