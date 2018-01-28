@@ -1,6 +1,6 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-import time, atexit, os, subprocess, logging
+import time, atexit, os, subprocess, logging, hashlib
 import remote_api
 BASE_SYNC_DIR = "/syncer/data"
 
@@ -16,6 +16,17 @@ def save_file(path, data):
     return True
   return False
 
+BLOCK_SIZE = 65536
+
+def get_checksum(path):
+    hasher = hashlib.md5()
+    with open(path, 'rb') as file:
+        buffer = file.read(BLOCK_SIZE)
+        while len(buffer) > 0:
+            hasher.update(buffer)
+            buffer = file.read(BLOCK_SIZE)
+    return hasher.hexdigest()
+
 def get_file_metadata(path):
   if not os.path.exists(path):
     return None
@@ -24,6 +35,7 @@ def get_file_metadata(path):
   # seconds since epoch
   last_changed = stat.st_mtime
   file_type = get_file_type(path)
+
   metadata = {
       "last_changed": last_changed,
       "path": path,
@@ -33,6 +45,9 @@ def get_file_metadata(path):
     metadata["files"] = []
     for file in os.listdir(path):
       metadata["files"].append(get_file_metadata(path + "/" + file))
+  else:
+    checksum = get_checksum(path)
+    metadata["md5"] = checksum
   return metadata
 
 def create_directory(path):
@@ -46,7 +61,9 @@ def is_newer(local, remote):
   return local["last_changed"] < remote["last_changed"]
 
 def same_file(local, remote):
-  return local["last_changed"] == remote["last_changed"]
+  logging.warning("local md5: {}".format(local["md5"]))
+  logging.warning("remote md5: {}".format(remote["md5"]))
+  return local["last_changed"] == remote["last_changed"] or local["md5"] == remote["md5"]
 
 def sync_data(node, file):
   path = file["path"]
