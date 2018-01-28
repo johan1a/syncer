@@ -2,7 +2,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 import time, atexit, os, subprocess, logging
 import remote_api
-BASE_SYNC_DIR = "/sync"
+BASE_SYNC_DIR = "/syncer/data"
 
 def get_file_type(path):
   if os.path.isdir(path):
